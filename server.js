@@ -7,8 +7,9 @@ import cors from "cors";
 dotenv.config();
 
 const app = express();
+app.use(cors());
 app.use(express.json());
-app.use(cors()); // allow frontend calls
+// allow frontend calls
 
 // --- Load from env ---
 const APP_TOKEN = process.env.SUMSUB_APP_TOKEN;
