@@ -90,6 +90,7 @@ app.post("/generate-link", async (req, res) => {
         .status(400)
         .json({ error: "No email found in Jotform submission" });
     }
+    console.log(res.body);
 
     const linkUrl = `/resources/sdkIntegrations/levels/-/websdkLink`;
     const body = JSON.stringify({
