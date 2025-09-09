@@ -43,15 +43,28 @@ function signRequest(method, url, body = "") {
   };
 }
 
-// --- Webhook: receives data from Jotform ---
+// --- Debug route: just logs and echoes back the Jotform payload ---
+app.post("/jotform-debug", (req, res) => {
+  console.log("🐞 Debug: Raw Jotform payload:");
+  console.log(JSON.stringify(req.body, null, 2));
+
+  res.json({
+    message: "✅ Webhook received",
+    receivedAt: new Date().toISOString(),
+    headers: req.headers,
+    body: req.body,
+  });
+});
+
+// --- Main webhook: receives data from Jotform ---
 app.post("/jotform-webhook", async (req, res) => {
   try {
     console.log("📩 Raw Jotform submission:", req.body);
 
-    // Extract correct fields
-    const userId = req.body.q6_typeA;
-    const email = req.body.q7_email;
-    const phone = req.body.q8_typeA8;
+    // ⚠️ Adjust these keys based on your Jotform field names
+    const userId = req.body.q3_userid || req.body.userId;
+    const email = req.body.q4_typeA4 || req.body.email;
+    const phone = req.body.q5_typeA5 || req.body.phone;
 
     if (!userId || !email) {
       return res.status(400).json({ error: "Missing userId or email" });
