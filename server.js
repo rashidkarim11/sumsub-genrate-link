@@ -1,27 +1,17 @@
 import express from "express";
 import bodyParser from "body-parser";
 import dotenv from "dotenv";
-import nodemailer from "nodemailer";
 import fetch from "node-fetch";
 import crypto from "crypto";
-import multer from "multer"; // <-- add this
+import multer from "multer";
+import { Resend } from "resend";
 
 dotenv.config();
 const app = express();
-const upload = multer(); // handles multipart/form-data
+const upload = multer();
 
-// Parse JSON + urlencoded
-app.use(bodyParser.urlencoded({ extended: true }));
-app.use(bodyParser.json());
-
-// --- Gmail transporter ---
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
+// --- Resend Setup ---
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 // --- Sumsub Setup ---
 const APP_TOKEN = process.env.SUMSUB_APP_TOKEN;
@@ -47,7 +37,6 @@ function signRequest(method, url, body = "") {
 // --- Debug route ---
 app.post("/jotform-debug", upload.none(), (req, res) => {
   console.log("🐞 Debug: Raw Jotform payload:", req.body);
-
   res.json({
     message: "✅ Webhook received",
     receivedAt: new Date().toISOString(),
@@ -61,20 +50,10 @@ app.post("/jotform-webhook", upload.none(), async (req, res) => {
   try {
     console.log("📩 Raw Jotform submission:", req.body);
 
-    // Parse rawRequest if available
-    let parsed = {};
-    if (req.body.rawRequest) {
-      try {
-        parsed = JSON.parse(req.body.rawRequest);
-      } catch (e) {
-        console.error("❌ Failed to parse rawRequest", e);
-      }
-    }
-
-    // Extract fields
-    const userId = parsed.q3_userid || req.body.q3_userid || req.body.userId;
-    const email = parsed.q4_typeA4 || req.body.q4_typeA4 || req.body.email;
-    const phone = parsed.q5_typeA5 || req.body.q5_typeA5 || req.body.phone;
+    // Extract Jotform fields
+    const userId = req.body.q3_userid || req.body.userId;
+    const email = req.body.q4_typeA4 || req.body.email;
+    const phone = req.body.q5_typeA5 || req.body.phone;
 
     if (!userId || !email) {
       return res.status(400).json({ error: "Missing userId or email" });
@@ -105,17 +84,16 @@ app.post("/jotform-webhook", upload.none(), async (req, res) => {
     const data = await response.json();
     const verificationUrl = data.url;
 
-    // --- Send email ---
-    const mailOptions = {
-      from: process.env.EMAIL_USER,
+    // --- Send email using Resend ---
+    await resend.emails.send({
+      from: "noreply@yourdomain.com", // must be verified domain in Resend
       to: email,
       subject: "Complete Your KYC Verification",
       html: `<p>Hello <b>${userId}</b>,</p>
              <p>Please complete your KYC verification by clicking this link:</p>
              <a href="${verificationUrl}">${verificationUrl}</a>`,
-    };
+    });
 
-    await transporter.sendMail(mailOptions);
     console.log("✅ Email sent to", email);
 
     res.json({ status: "ok", userId, email, phone, verificationUrl });
@@ -127,7 +105,7 @@ app.post("/jotform-webhook", upload.none(), async (req, res) => {
 
 // Root
 app.get("/", (req, res) => {
-  res.send("🚀 Jotform Webhook + Sumsub + Email is running");
+  res.send("🚀 Jotform Webhook + Sumsub + Resend Email is running");
 });
 
 // Start server
