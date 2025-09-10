@@ -61,10 +61,20 @@ app.post("/jotform-webhook", upload.none(), async (req, res) => {
   try {
     console.log("📩 Raw Jotform submission:", req.body);
 
-    // ⚠️ Adjust these keys to match actual Jotform fields
-    const userId = req.body.q3_userid || req.body.userId;
-    const email = req.body.q4_typeA4 || req.body.email;
-    const phone = req.body.q5_typeA5 || req.body.phone;
+    // Parse rawRequest if available
+    let parsed = {};
+    if (req.body.rawRequest) {
+      try {
+        parsed = JSON.parse(req.body.rawRequest);
+      } catch (e) {
+        console.error("❌ Failed to parse rawRequest", e);
+      }
+    }
+
+    // Extract fields
+    const userId = parsed.q3_userid || req.body.q3_userid || req.body.userId;
+    const email = parsed.q4_typeA4 || req.body.q4_typeA4 || req.body.email;
+    const phone = parsed.q5_typeA5 || req.body.q5_typeA5 || req.body.phone;
 
     if (!userId || !email) {
       return res.status(400).json({ error: "Missing userId or email" });
