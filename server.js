@@ -69,11 +69,9 @@ app.post("/jotform-webhook", upload.none(), async (req, res) => {
     }
 
     // Extract values
-    const userId = payload.q3_userid || req.body.q3_userid;
-    const email = payload.q4_typeA4 || req.body.q4_typeA4;
-    const phone = payload.q5_typeA5 || req.body.q5_typeA5;
+    const userId = payload.q3_Email || req.body.q3_Email;
 
-    if (!userId || !email) {
+    if (!userId) {
       return res.status(400).json({ error: "Missing userId or email" });
     }
 
@@ -82,7 +80,6 @@ app.post("/jotform-webhook", upload.none(), async (req, res) => {
     const body = JSON.stringify({
       levelName: LEVEL_NAME,
       userId,
-      applicantIdentifiers: { email, phone },
       ttlInSecs: 1800,
       redirectUrl: "https://your-site.com/after-kyc",
     });
@@ -107,7 +104,7 @@ app.post("/jotform-webhook", upload.none(), async (req, res) => {
     try {
       const emailResp = await resend.emails.send({
         from: RESEND_FROM,
-        to: email,
+        to: userId,
         subject: "Complete Your KYC Verification",
         html: `
           <p>Hello <strong>${userId}</strong>,</p>
@@ -124,8 +121,7 @@ app.post("/jotform-webhook", upload.none(), async (req, res) => {
     res.json({
       status: "ok",
       userId,
-      email,
-      phone,
+
       verificationUrl,
       debugPayload: payload,
     });
